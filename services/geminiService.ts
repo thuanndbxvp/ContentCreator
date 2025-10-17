@@ -1,6 +1,30 @@
 import { GoogleGenAI, Type } from "@google/genai";
 import type { GenerationParams, VisualPrompt, AllVisualPromptsResult } from '../types';
 
+// Helper function to handle API errors and provide more specific messages
+const handleApiError = (error: unknown, context: string): Error => {
+    console.error(`Error during ${context}:`, error);
+    if (error instanceof Error) {
+        let userMessage = `Không thể ${context}.`;
+        
+        const lowerCaseErrorMessage = error.message.toLowerCase();
+
+        if (lowerCaseErrorMessage.includes('api key not valid') || lowerCaseErrorMessage.includes('api_key_invalid')) {
+            userMessage += ' API Key không hợp lệ. Vui lòng kiểm tra lại trong phần Cài đặt.';
+        } else if (error.message.includes('429') || lowerCaseErrorMessage.includes('quota')) {
+            userMessage += ' Bạn đã đạt đến giới hạn yêu cầu cho phép. Vui lòng thử lại sau.';
+        } else if (lowerCaseErrorMessage.includes('safety')) {
+            userMessage += ' Yêu cầu của bạn đã bị chặn vì lý do an toàn nội dung. Vui lòng điều chỉnh lại chủ đề hoặc từ khóa.';
+        } else {
+            // For other errors, show the original message for better debugging.
+            userMessage += ` Chi tiết: ${error.message}`;
+        }
+        return new Error(userMessage);
+    }
+    return new Error(`Không thể ${context}. Đã xảy ra lỗi không xác định.`);
+};
+
+
 // Helper function to get the API client instance
 const getApiClient = (): GoogleGenAI => {
     const apiKey = localStorage.getItem('gemini-api-key');
@@ -72,11 +96,7 @@ export const generateScript = async (params: GenerationParams): Promise<string> 
         });
         return response.text;
     } catch (error) {
-        console.error("Error generating script from Gemini API:", error);
-        if (error instanceof Error && error.message.includes("API Key")) {
-             throw error;
-        }
-        throw new Error("Không thể tạo kịch bản. Dịch vụ AI có thể không khả dụng hoặc API Key không hợp lệ.");
+        throw handleApiError(error, 'tạo kịch bản');
     }
 };
 
@@ -113,11 +133,7 @@ export const generateScriptOutline = async (topic: string, wordCount: string, la
         const userGuide = `### Dàn Ý Chi Tiết Cho Kịch Bản Dài\n\n**Gợi ý:** Kịch bản của bạn dài hơn 1000 từ. Đây là dàn ý chi tiết AI đã tạo ra. Bạn có thể sử dụng nút "Tạo kịch bản đầy đủ" bên dưới để AI tự động viết từng phần cho bạn.\n\n---\n\n`;
         return userGuide + response.text;
     } catch (error) {
-        console.error("Error generating script outline from Gemini API:", error);
-        if (error instanceof Error && error.message.includes("API Key")) {
-             throw error;
-        }
-        throw new Error("Không thể tạo dàn ý. Dịch vụ AI có thể không khả dụng hoặc API Key không hợp lệ.");
+        throw handleApiError(error, 'tạo dàn ý');
     }
 };
 
@@ -154,11 +170,7 @@ export const generateTopicSuggestions = async (theme: string): Promise<string[]>
         return suggestions;
 
     } catch (error) {
-        console.error("Error generating topic suggestions from Gemini API:", error);
-        if (error instanceof Error && error.message.includes("API Key")) {
-             throw error;
-        }
-        throw new Error("Không thể tạo gợi ý chủ đề. Dịch vụ AI có thể không khả dụng hoặc API Key không hợp lệ.");
+        throw handleApiError(error, 'tạo gợi ý chủ đề');
     }
 };
 
@@ -195,11 +207,7 @@ export const generateKeywordSuggestions = async (topic: string): Promise<string[
         return keywords;
 
     } catch (error) {
-        console.error("Error generating keyword suggestions from Gemini API:", error);
-        if (error instanceof Error && error.message.includes("API Key")) {
-             throw error;
-        }
-        throw new Error("Không thể tạo gợi ý từ khóa. Dịch vụ AI có thể không khả dụng hoặc API Key không hợp lệ.");
+        throw handleApiError(error, 'tạo gợi ý từ khóa');
     }
 };
 
@@ -232,11 +240,7 @@ export const reviseScript = async (originalScript: string, revisionInstruction: 
         });
         return response.text;
     } catch (error) {
-        console.error("Error revising script:", error);
-        if (error instanceof Error && error.message.includes("API Key")) {
-             throw error;
-        }
-        throw new Error("Không thể sửa kịch bản. Dịch vụ AI có thể không khả dụng hoặc API Key không hợp lệ.");
+        throw handleApiError(error, 'sửa kịch bản');
     }
 };
 
@@ -278,11 +282,7 @@ export const generateScriptPart = async (fullOutline: string, previousPartsScrip
         });
         return response.text;
     } catch (error) {
-        console.error("Error generating script part:", error);
-        if (error instanceof Error && error.message.includes("API Key")) {
-             throw error;
-        }
-        throw new Error("Không thể tạo phần tiếp theo của kịch bản. Dịch vụ AI có thể không khả dụng hoặc API Key không hợp lệ.");
+        throw handleApiError(error, 'tạo phần tiếp theo của kịch bản');
     }
 };
 
@@ -315,11 +315,7 @@ export const extractDialogue = async (script: string, language: string): Promise
         });
         return response.text;
     } catch (error) {
-        console.error("Error extracting dialogue:", error);
-        if (error instanceof Error && error.message.includes("API Key")) {
-             throw error;
-        }
-        throw new Error("Không thể tách lời thoại. Dịch vụ AI có thể không khả dụng hoặc API Key không hợp lệ.");
+        throw handleApiError(error, 'tách lời thoại');
     }
 };
 
@@ -367,11 +363,7 @@ export const generateVisualPrompt = async (sceneDescription: string): Promise<Vi
             throw new Error("AI returned data in an unexpected format.");
         }
     } catch (error) {
-        console.error("Error generating visual prompt:", error);
-        if (error instanceof Error && error.message.includes("API Key")) {
-             throw error;
-        }
-        throw new Error("Không thể tạo prompt hình ảnh. Dịch vụ AI có thể không khả dụng hoặc API Key không hợp lệ.");
+        throw handleApiError(error, 'tạo prompt hình ảnh');
     }
 };
 
@@ -432,10 +424,6 @@ export const generateAllVisualPrompts = async (script: string): Promise<AllVisua
             throw new Error("AI returned data in an unexpected format.");
         }
     } catch (error) {
-        console.error("Error generating all visual prompts:", error);
-        if (error instanceof Error && error.message.includes("API Key")) {
-             throw error;
-        }
-        throw new Error("Không thể tạo prompt hàng loạt. Dịch vụ AI có thể không khả dụng hoặc API Key không hợp lệ.");
+        throw handleApiError(error, 'tạo prompt hàng loạt');
     }
 };
